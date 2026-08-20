@@ -1,6 +1,8 @@
 ﻿<script setup lang="ts">
     import { ref } from 'vue';
     import JewelCaseIntro from './components/JewelCaseIntro.vue';
+    import CdCoverDesigner from './components/CdCoverDesigner.vue';
+    import CdBurnModal from './components/CdBurnModal.vue'; 
     import { usePlaylistStore } from './stores/playlist';
 
     const showIntro = ref(true);
@@ -20,19 +22,16 @@
 
 <template>
     <div class="app-root">
-        <JewelCaseIntro v-if="showIntro"
-                        @animation-complete="handleIntroComplete" />
+        <JewelCaseIntro v-if="showIntro" @animation-complete="handleIntroComplete" />
 
         <main v-else class="momocider-station">
-            <!-- Header -->
             <header class="station-header">
                 <h1>🍑 MomoCider</h1>
-                <p class="subtitle"> • Digital CD Mixtape Station •</p>
+                <p class="subtitle">• Digital CD Mixtape Station •</p>
             </header>
 
-            <!-- Main CD Station Card -->
             <section class="card">
-                <!-- Playlist Title Input -->
+                <!-- Mixtape Title -->
                 <div class="playlist-title-wrapper">
                     <label for="playlistName">Mixtape Name:</label>
                     <input id="playlistName"
@@ -42,7 +41,7 @@
                            placeholder="Name your mixtape..." />
                 </div>
 
-                <!-- 80-Min CD Capacity Bar -->
+                <!-- 80-Min Capacity Bar -->
                 <div class="capacity-container">
                     <div class="capacity-header">
                         <span>💿 CD Capacity Meter</span>
@@ -58,7 +57,7 @@
                     </p>
                 </div>
 
-                <!-- Add YouTube Link Form -->
+                <!-- Link Input Form -->
                 <form @submit.prevent="handleAddSong" class="add-track-form">
                     <input v-model="inputUrl"
                            type="url"
@@ -67,23 +66,34 @@
                            :disabled="store.isLoadingTrack"
                            required />
                     <button type="submit" class="peach-button" :disabled="store.isLoadingTrack">
-                        {{ store.isLoadingTrack ? 'Fetching...' : '+ Add Track' }}
+                        {{ store.isLoadingTrack ? 'Processing...' : '+ Add Track' }}
                     </button>
                 </form>
 
                 <p v-if="store.errorMessage" class="error-text">{{ store.errorMessage }}</p>
 
-                <!-- Track List -->
+                <!-- Tracklist & Export Controls -->
                 <div class="track-list">
-                    <h3>Tracklist ({{ store.tracks.length }})</h3>
+                    <div class="tracklist-header">
+                        <h3>Tracklist ({{ store.tracks.length }})</h3>
+                        <div class="export-actions" v-if="store.tracks.length > 0">
+                            <button class="export-btn mp3-btn" @click="store.exportMp3Zip" :disabled="store.isLoadingTrack" title="Download zipped MP3 files ready for burning">
+                                {{ store.isLoadingTrack ? '⏳ Zipping MP3s...' : '💿 Export ZIP' }}
+                            </button>
+                            
+                            <!-- 👈 2. Drop the Burn Modal right here! -->
+                            <CdBurnModal />
+
+                            <button class="export-btn" @click="store.exportM3U">💾 .M3U</button>
+                            <button class="export-btn" @click="store.exportJSON">📄 JSON</button>
+                        </div>
+                    </div>
 
                     <div v-if="store.tracks.length === 0" class="empty-state">
                         No tracks added yet. Paste a YouTube link above to begin!
                     </div>
 
-                    <div v-for="(track, index) in store.tracks"
-                         :key="track.id"
-                         class="track-item">
+                    <div v-for="(track, index) in store.tracks" :key="track.id" class="track-item">
                         <span class="track-number">{{ (index + 1).toString().padStart(2, '0') }}</span>
                         <img :src="track.thumbnailUrl" alt="cover" class="track-thumb" />
                         <div class="track-info">
@@ -93,30 +103,28 @@
                         <button @click="store.removeTrack(track.id)" class="remove-btn" title="Remove track">✕</button>
                     </div>
                 </div>
+
+                <!-- Customizer Modal Button -->
+                <CdCoverDesigner />
             </section>
         </main>
     </div>
 </template>
 
-<style>
-    /* Dark Forest Theme Palette (Matches Inner CD Hub #38433a) */
-    body {
-        margin: 0;
-        background-color: #38433a;
-        font-family: 'Courier New', Courier, monospace;
-        color: #e5ece6;
-    }
-
+<style scoped>
+    /* Scoped Styles for Main Station */
     .app-root {
         min-height: 100vh;
         background: radial-gradient(circle, #424f44 0%, #2e362f 100%);
+        color: #e5ece6;
+        font-family: 'Courier New', Courier, monospace;
+        padding-bottom: 2rem;
     }
 
     .momocider-station {
         max-width: 680px;
         margin: 0 auto;
         padding: 2.5rem 1rem;
-        animation: fadeIn 0.8s ease-in-out;
     }
 
     .station-header {
@@ -128,7 +136,6 @@
         font-size: 2.8rem;
         margin: 0;
         color: #e8c5b8;
-        letter-spacing: 1px;
     }
 
     .subtitle {
@@ -137,7 +144,6 @@
         font-size: 0.9rem;
     }
 
-    /* Forest Green Station Card */
     .card {
         background: #2b332d;
         border: 3px solid #1e2420;
@@ -171,13 +177,8 @@
         outline: none;
     }
 
-    .peach-input::placeholder {
-        color: #8fa393;
-    }
-
     .peach-input:focus {
         border-color: #a3c9a8;
-        box-shadow: 0 0 0 3px rgba(163, 201, 168, 0.25);
     }
 
     .title-input {
@@ -185,7 +186,6 @@
         font-size: 1.1rem;
     }
 
-    /* Capacity Bar */
     .capacity-container {
         background: #323b34;
         border: 2px dashed #526355;
@@ -219,7 +219,7 @@
     }
 
     .progress-bar-fill.over-limit {
-        background: #e65c5c;
+        background: linear-gradient(90deg, #e87c7c, #ff4d4d);
     }
 
     .warning-text {
@@ -229,7 +229,21 @@
         font-weight: bold;
     }
 
-    /* Track Input Form */
+    .error-text {
+        color: #ff7b7b;
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #8fa393;
+        font-size: 0.85rem;
+        border: 1px dashed #38433a;
+        border-radius: 8px;
+    }
+
     .add-track-form {
         display: flex;
         gap: 0.5rem;
@@ -245,37 +259,55 @@
         font-weight: bold;
         color: #ffffff;
         cursor: pointer;
-        white-space: nowrap;
         box-shadow: 3px 3px 0px #1e2420;
-        transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.1s ease;
     }
 
-    .peach-button:hover {
-        background: #92ac97;
+    .peach-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
     }
 
-    .peach-button:active {
-        transform: translate(2px, 2px);
-        box-shadow: 1px 1px 0px #1e2420;
-    }
-
-    /* Track List */
     .track-list {
         margin-top: 1.5rem;
     }
 
-    .track-list h3 {
+    .tracklist-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin-bottom: 0.8rem;
-        color: #c0d1c3;
-        font-size: 1rem;
     }
 
-    .empty-state {
-        text-align: center;
-        padding: 2rem 1rem;
-        color: #8fa393;
-        font-style: italic;
-        font-size: 0.85rem;
+    .tracklist-header h3 {
+        margin: 0;
+        color: #c0d1c3;
+    }
+
+    .export-actions {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+    }
+
+    .export-btn {
+        background: #38433a;
+        border: 1px solid #526355;
+        border-radius: 6px;
+        padding: 0.35rem 0.6rem;
+        color: #e5ece6;
+        font-size: 0.75rem;
+        cursor: pointer;
+    }
+
+    .export-btn:disabled {
+        opacity: 0.5;
+        cursor: wait;
+    }
+
+    .mp3-btn {
+        background: #7f9a84;
+        color: #fff;
+        font-weight: bold;
     }
 
     .track-item {
@@ -299,22 +331,17 @@
         height: 44px;
         object-fit: cover;
         border-radius: 4px;
-        border: 1px solid #1e2420;
     }
 
     .track-info {
         flex: 1;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
     }
 
     .track-title {
         font-weight: bold;
         font-size: 0.85rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
         color: #ffffff;
     }
 
@@ -329,28 +356,5 @@
         color: #8fa393;
         font-size: 1.1rem;
         cursor: pointer;
-        padding: 0.2rem 0.5rem;
-    }
-
-    .remove-btn:hover {
-        color: #ff7b7b;
-    }
-
-    .error-text {
-        color: #ff7b7b;
-        font-size: 0.85rem;
-        margin-top: 0.5rem;
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(8px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
     }
 </style>
