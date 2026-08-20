@@ -1,74 +1,80 @@
 import { defineStore } from 'pinia';
 
 export interface Track {
-    id: string;
-    youtubeUrl: string;
-    title: string;
-    artist: string;
-    durationSeconds: number;
-    thumbnailUrl: string;
+  id: string;
+  title: string;
+  artist: string;
+  durationSeconds: number;
+  thumbnailUrl: string;
+  originalUrl: string;
 }
 
+const TOTAL_CD_CAPACITY_SECONDS = 80 * 60; // 4800s (80 mins)
+
 export const usePlaylistStore = defineStore('playlist', {
-    state: () => ({
-        playlistName: 'My Peach Mixtape',
-        tracks: [] as Track[],
-        isLoadingTrack: false,
-        errorMessage: null as string | null
-    }),
-    getters: {
-        totalDurationSeconds: (state) =>
-            state.tracks.reduce((acc, track) => acc + track.durationSeconds, 0),
+  state: () => ({
+    playlistName: '',
+    tracks: [] as Track[],
+    isLoadingTrack: false,
+    errorMessage: '',
+  }),
 
-        totalDurationFormatted(): string {
-            const mins = Math.floor(this.totalDurationSeconds / 60);
-            const secs = this.totalDurationSeconds % 60;
-            return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
-        },
-
-        // 80 minutes = 4800 seconds max on standard Audio CD
-        capacityPercentage(): number {
-            return Math.min(100, Math.round((this.totalDurationSeconds / 4800) * 100));
-        },
-
-        isOverCdLimit(): boolean {
-            return this.totalDurationSeconds > 4800;
-        }
+  getters: {
+    // Total duration in seconds
+    totalDurationSeconds(state): number {
+      return state.tracks.reduce((acc, track) => acc + (track.durationSeconds || 0), 0);
     },
-    actions: {
-        async addTrackFromUrl(url: string) {
-            this.isLoadingTrack = true;
-            this.errorMessage = null;
 
-            try {
-                const response = await fetch('http://localhost:5000/api/tracks/info', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url })
-                });
+    // Formatted string (e.g., "12m 34s")
+    totalDurationFormatted(): string {
+      const mins = Math.floor(this.totalDurationSeconds / 60);
+      const secs = this.totalDurationSeconds % 60;
+      return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+    },
 
-                if (!response.ok) {
-                    throw new Error('Could not fetch song info. Check the YouTube link.');
-                }
+    // Percentage for capacity progress bar
+    capacityPercentage(): number {
+      return Math.min((this.totalDurationSeconds / TOTAL_CD_CAPACITY_SECONDS) * 100, 100);
+    },
 
-                const data = await response.json();
-                this.tracks.push({
-                    id: crypto.randomUUID(),
-                    youtubeUrl: url,
-                    title: data.title,
-                    artist: data.artist,
-                    durationSeconds: data.durationSeconds,
-                    thumbnailUrl: data.thumbnailUrl
-                });
-            } catch (err: any) {
-                this.errorMessage = err.message || 'Error adding track.';
-            } finally {
-                this.isLoadingTrack = false;
-            }
-        },
+    // Boolean check if total length exceeds 80 mins
+    isOverCdLimit(): boolean {
+      return this.totalDurationSeconds > TOTAL_CD_CAPACITY_SECONDS;
+    },
+  },
 
-        removeTrack(id: string) {
-            this.tracks = this.tracks.filter(t => t.id !== id);
+  actions: {
+    async addTrackFromUrl(url: string) {
+      this.isLoadingTrack = true;
+      this.errorMessage = '';
+
+      try {
+        const response = await fetch('http://localhost:5000/api/track/info', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch song details.');
         }
-    }
+
+        if (data.track) {
+          this.tracks.push(data.track);
+        }
+      } catch (err: any) {
+        this.errorMessage = err.message || 'Something went wrong while adding the track.';
+      } finally {
+        this.isLoadingTrack = false;
+      }
+    },
+
+    removeTrack(trackId: string) {
+      this.tracks = this.tracks.filter((track) => track.id !== trackId);
+    },
+  },
 });

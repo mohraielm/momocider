@@ -26,8 +26,8 @@
         <main v-else class="momocider-station">
             <!-- Header -->
             <header class="station-header">
-                <h1>🍑 Momocider</h1>
-                <p class="subtitle">桃サイダー • Digital CD Mixtape Station</p>
+                <h1>🍑 MomoCider</h1>
+                <p class="subtitle"> • Digital CD Mixtape Station •</p>
             </header>
 
             <!-- Main CD Station Card -->
@@ -99,16 +99,17 @@
 </template>
 
 <style>
-    /* Peach Theme Palette */
+    /* Dark Forest Theme Palette (Matches Inner CD Hub #38433a) */
     body {
         margin: 0;
-        background-color: #fdf2f0;
+        background-color: #38433a;
         font-family: 'Courier New', Courier, monospace;
-        color: #3d2b28;
+        color: #e5ece6;
     }
 
     .app-root {
         min-height: 100vh;
+        background: radial-gradient(circle, #424f44 0%, #2e362f 100%);
     }
 
     .momocider-station {
@@ -123,57 +124,61 @@
         margin-bottom: 2rem;
     }
 
-        .station-header h1 {
-            font-size: 2.8rem;
-            margin: 0;
-            color: #e06d53;
-            letter-spacing: 1px;
-        }
+    .station-header h1 {
+        font-size: 2.8rem;
+        margin: 0;
+        color: #e8c5b8;
+        letter-spacing: 1px;
+    }
 
     .subtitle {
         margin-top: 0.3rem;
-        color: #936357;
+        color: #a3b8a7;
         font-size: 0.9rem;
     }
 
-    /* Peach Station Card */
+    /* Forest Green Station Card */
     .card {
-        background: #fff8f6;
-        border: 3px solid #3d2b28;
+        background: #2b332d;
+        border: 3px solid #1e2420;
         border-radius: 16px;
         padding: 1.8rem;
-        box-shadow: 8px 8px 0px #f4c2b2;
+        box-shadow: 8px 8px 0px #1a211c;
     }
 
     .playlist-title-wrapper {
         margin-bottom: 1.5rem;
     }
 
-        .playlist-title-wrapper label {
-            display: block;
-            font-weight: bold;
-            font-size: 0.85rem;
-            margin-bottom: 0.4rem;
-            color: #7a4336;
-        }
+    .playlist-title-wrapper label {
+        display: block;
+        font-weight: bold;
+        font-size: 0.85rem;
+        margin-bottom: 0.4rem;
+        color: #b3c7b7;
+    }
 
     .peach-input {
         width: 100%;
         box-sizing: border-box;
         padding: 0.75rem 1rem;
-        border: 2px solid #3d2b28;
+        border: 2px solid #1e2420;
         border-radius: 8px;
-        background: #ffffff;
+        background: #38433a;
         font-family: inherit;
         font-size: 0.95rem;
-        color: #3d2b28;
+        color: #ffffff;
         outline: none;
     }
 
-        .peach-input:focus {
-            border-color: #e06d53;
-            box-shadow: 0 0 0 3px #fce4ec;
-        }
+    .peach-input::placeholder {
+        color: #8fa393;
+    }
+
+    .peach-input:focus {
+        border-color: #a3c9a8;
+        box-shadow: 0 0 0 3px rgba(163, 201, 168, 0.25);
+    }
 
     .title-input {
         font-weight: bold;
@@ -182,8 +187,8 @@
 
     /* Capacity Bar */
     .capacity-container {
-        background: #fbeee8;
-        border: 2px dashed #e0a394;
+        background: #323b34;
+        border: 2px dashed #526355;
         border-radius: 10px;
         padding: 1rem;
         margin-bottom: 1.5rem;
@@ -195,30 +200,30 @@
         font-size: 0.85rem;
         font-weight: bold;
         margin-bottom: 0.5rem;
-        color: #5c3a31;
+        color: #c0d1c3;
     }
 
     .progress-bar-bg {
         width: 100%;
         height: 16px;
-        background: #ead2c9;
+        background: #232a24;
         border-radius: 8px;
         overflow: hidden;
-        border: 1px solid #3d2b28;
+        border: 1px solid #1e2420;
     }
 
     .progress-bar-fill {
         height: 100%;
-        background: linear-gradient(90deg, #ffb7b2, #e06d53);
+        background: linear-gradient(90deg, #718073, #a3c9a8);
         transition: width 0.4s ease;
     }
 
-        .progress-bar-fill.over-limit {
-            background: #d90429;
-        }
+    .progress-bar-fill.over-limit {
+        background: #e65c5c;
+    }
 
     .warning-text {
-        color: #d90429;
+        color: #ff7b7b;
         font-size: 0.8rem;
         margin: 0.5rem 0 0 0;
         font-weight: bold;
@@ -232,43 +237,43 @@
     }
 
     .peach-button {
-        background: #ffb7b2;
-        border: 2px solid #3d2b28;
+        background: #7f9a84;
+        border: 2px solid #1e2420;
         border-radius: 8px;
         padding: 0.75rem 1.2rem;
         font-family: inherit;
         font-weight: bold;
-        color: #3d2b28;
+        color: #ffffff;
         cursor: pointer;
         white-space: nowrap;
-        box-shadow: 3px 3px 0px #3d2b28;
-        transition: transform 0.1s ease, box-shadow 0.1s ease;
+        box-shadow: 3px 3px 0px #1e2420;
+        transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.1s ease;
     }
 
-        .peach-button:hover {
-            background: #ffa49e;
-        }
+    .peach-button:hover {
+        background: #92ac97;
+    }
 
-        .peach-button:active {
-            transform: translate(2px, 2px);
-            box-shadow: 1px 1px 0px #3d2b28;
-        }
+    .peach-button:active {
+        transform: translate(2px, 2px);
+        box-shadow: 1px 1px 0px #1e2420;
+    }
 
     /* Track List */
     .track-list {
         margin-top: 1.5rem;
     }
 
-        .track-list h3 {
-            margin-bottom: 0.8rem;
-            color: #5c3a31;
-            font-size: 1rem;
-        }
+    .track-list h3 {
+        margin-bottom: 0.8rem;
+        color: #c0d1c3;
+        font-size: 1rem;
+    }
 
     .empty-state {
         text-align: center;
         padding: 2rem 1rem;
-        color: #a06b5e;
+        color: #8fa393;
         font-style: italic;
         font-size: 0.85rem;
     }
@@ -277,8 +282,8 @@
         display: flex;
         align-items: center;
         gap: 0.8rem;
-        background: #ffffff;
-        border: 2px solid #3d2b28;
+        background: #38433a;
+        border: 2px solid #1e2420;
         border-radius: 8px;
         padding: 0.6rem;
         margin-bottom: 0.6rem;
@@ -286,7 +291,7 @@
 
     .track-number {
         font-weight: bold;
-        color: #e06d53;
+        color: #a3c9a8;
     }
 
     .track-thumb {
@@ -294,7 +299,7 @@
         height: 44px;
         object-fit: cover;
         border-radius: 4px;
-        border: 1px solid #3d2b28;
+        border: 1px solid #1e2420;
     }
 
     .track-info {
@@ -310,28 +315,29 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        color: #ffffff;
     }
 
     .track-artist {
         font-size: 0.75rem;
-        color: #7a4336;
+        color: #a3b8a7;
     }
 
     .remove-btn {
         background: transparent;
         border: none;
-        color: #a06b5e;
+        color: #8fa393;
         font-size: 1.1rem;
         cursor: pointer;
         padding: 0.2rem 0.5rem;
     }
 
-        .remove-btn:hover {
-            color: #d90429;
-        }
+    .remove-btn:hover {
+        color: #ff7b7b;
+    }
 
     .error-text {
-        color: #d90429;
+        color: #ff7b7b;
         font-size: 0.85rem;
         margin-top: 0.5rem;
     }
