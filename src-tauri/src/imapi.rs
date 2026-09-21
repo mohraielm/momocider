@@ -150,11 +150,12 @@ fn sanitize_volume_name(input: &str) -> String {
         })
         .collect::<String>();
 
-    let trimmed = sanitized.trim();
-    if trimmed.is_empty() {
+    let normalized = sanitized.split_whitespace().collect::<Vec<_>>().join(" ");
+    let truncated = normalized.chars().take(32).collect::<String>();
+    if truncated.is_empty() {
         "MOMOCIDER".to_string()
     } else {
-        trimmed.to_string()
+        truncated
     }
 }
 
@@ -264,24 +265,8 @@ if (-not $drive) {{ \
     $drive = Get-CimInstance -Class Win32_CDROMDrive | Select-Object -First 1; \
     if (-not $drive) {{ throw \"No optical drive detected for burn.\" }}; \
 }}; \
-$fs = New-Object -ComObject IMAPI2FS.MsftFileSystemImage; \
-$fs.VolumeName = $volumeName; \
-$fs.ChooseImageDefaultsForMediaType($mediaType); \
-$root = $fs.Root; \
-try {{ \
-    $root.AddTree($sourceDir, $true); \
-}} catch {{ \
-    try {{ \
-        $root.AddTree($sourceDir, $false); \
-    }} catch {{ \
-        try {{ \
-            $fs.AddTree($sourceDir, $true); \
-        }} catch {{ \
-            $fs.AddTree($sourceDir); \
-        }}; \
-    }}; \
-}}; \
-$img = $fs.CreateResultImage(); \
+$files = @(Get-ChildItem -LiteralPath $sourceDir -Filter '*.wav' | Sort-Object Name); \
+if ($files.Count -eq 0) {{ throw \"No WAV audio tracks were prepared for the audio CD.\" }}; \
             $recorderPath = if ($drive.Drive) {{ $drive.Drive.TrimEnd('\\') }} else {{ $drive.DeviceID }}; \
             $discMaster = New-Object -ComObject IMAPI2.MsftDiscMaster2; \
             $recorderCandidates = @(); \
@@ -306,11 +291,19 @@ $img = $fs.CreateResultImage(); \
             if (-not $initialized) {{ \
                 throw \"IMAPI could not initialize the optical recorder. Tried the Windows device, PNP, and drive identifiers for $recorderPath.\"; \
             }}; \
-$format = New-Object -ComObject IMAPI2.MsftDiscFormat2Data; \
+$format = New-Object -ComObject IMAPI2.MsftDiscFormat2TrackAtOnce; \
 $format.Recorder = $recorder; \
 $format.ClientName = 'Momocider'; \
-$format.Write($img.ImageStream); \
-Write-Output \"Successfully burned $volumeName to $recorderPath\"",
+foreach ($file in $files) {{ \
+    $stream = New-Object -ComObject ADODB.Stream; \
+    $stream.Type = 1; \
+    $stream.Open(); \
+    $stream.LoadFromFile($file.FullName); \
+    $format.AddAudioTrack($stream); \
+    $stream.Close(); \
+}}; \
+$format.Finish(); \
+Write-Output \"Successfully burned audio CD '$volumeName' to $recorderPath\"",
         burner_id, source_dir, volume_name
     )
 }
@@ -420,12 +413,12 @@ mod tests {
 
         assert!(script.contains("CDROM0"));
         assert!(script.contains("momocider-test"));
-        assert!(script.contains("IMAPI2.MsftDiscFormat2Data"));
+        assert!(script.contains("IMAPI2.MsftDiscFormat2TrackAtOnce"));
         assert!(script.contains("$mediaType = 2"));
-        assert!(script.contains("-like \"*$driveId*\""));
-        assert!(script.contains("AddTree($sourceDir, $true)"));
+        assert!(script.contains("Filter '*.wav'"));
         assert!(script.contains("MsftDiscRecorder2"));
-        assert!(script.contains("Write($img.ImageStream)"));
+        assert!(script.contains("AddAudioTrack($stream)"));
+        assert!(script.contains("Finish()"));
     }
 
     #[test]
@@ -442,7 +435,7 @@ mod tests {
     fn track_title_and_volume_name_are_sanitized() {
         assert_eq!(
             sanitize_volume_name("Momocider / Vol. 1"),
-            "Momocider   Vol  1"
+            "Momocider Vol 1"
         );
         assert_eq!(sanitize_track_title("Song / Title: #1"), "Song _ Title_ _1");
     }
