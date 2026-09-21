@@ -301,14 +301,21 @@ $format = New-Object -ComObject IMAPI2.MsftDiscFormat2TrackAtOnce; \
 $format.Recorder = $recorder; \
 $format.ClientName = 'Momocider'; \
 $format.PrepareMedia(); \
+Add-Type @' \
+using System; \
+using System.Runtime.InteropServices; \
+public static class MomociderNativeStreams {{ \
+    [DllImport(\"shlwapi.dll\", CharSet = CharSet.Unicode)] \
+    public static extern int SHCreateStreamOnFileEx(string path, uint mode, uint attributes, bool create, IntPtr template, out IntPtr stream); \
+}} \
+'@; \
 foreach ($file in $files) {{ \
-    $stream = New-Object -ComObject ADODB.Stream; \
-    $stream.Type = 1; \
-    $stream.Open(); \
-    $stream.LoadFromFile($file.FullName); \
-    $stream.Position = 0; \
+    $streamPtr = [IntPtr]::Zero; \
+    $hr = [MomociderNativeStreams]::SHCreateStreamOnFileEx($file.FullName, 0x20, 0, $false, [IntPtr]::Zero, [ref]$streamPtr); \
+    if ($hr -ne 0) {{ throw \"Could not open WAV audio stream for $($file.FullName) (HRESULT $hr).\" }}; \
+    $stream = [Runtime.InteropServices.Marshal]::GetObjectForIUnknown($streamPtr); \
     $format.AddAudioTrack($stream); \
-    $stream.Close(); \
+    [Runtime.InteropServices.Marshal]::Release($streamPtr) | Out-Null; \
 }}; \
 $format.Finish(); \
 Write-Output \"Successfully burned Audio CD '$volumeName' to $recorderPath\"",
@@ -426,6 +433,7 @@ mod tests {
         assert!(script.contains("Filter '*.wav'"));
         assert!(script.contains("MsftDiscRecorder2"));
         assert!(script.contains("PrepareMedia()"));
+        assert!(script.contains("SHCreateStreamOnFileEx"));
         assert!(script.contains("AddAudioTrack($stream)"));
         assert!(script.contains("Finish()"));
     }
