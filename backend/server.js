@@ -11,6 +11,14 @@ import archiver from 'archiver';
 const execAsync = promisify(exec);
 const app = express();
 const PORT = process.env.PORT || 5000;
+const ytDlpBaseOptions = {
+  noWarnings: true,
+  noCallHome: true,
+  preferFreeFormats: true,
+  noProgress: true,
+  update: false,
+  ffmpegLocation: ffmpegPath,
+};
 
 app.use(cors());
 app.use(express.json());
@@ -24,11 +32,8 @@ app.post('/api/track/info', async (req, res) => {
 
   try {
     const metadata = await ytdlp(url, {
+      ...ytDlpBaseOptions,
       dumpSingleJson: true,
-      noWarnings: true,
-      noCallHome: true,
-      preferFreeFormats: true,
-      ffmpegLocation: ffmpegPath,
     });
 
     const trackInfo = {
@@ -48,6 +53,70 @@ app.post('/api/track/info', async (req, res) => {
 });
 
 // 💿 2. MP3 Download & ZIP Packaging Endpoint
+app.post('/api/prepare-burn', async (req, res) => {
+  const { tracks, playlistName } = req.body;
+  console.log(`💿 Burn prep request received for "${playlistName}" (${tracks?.length} tracks)`);
+
+  if (!tracks || !Array.isArray(tracks) || tracks.length === 0) {
+    return res.status(400).json({ error: 'No tracks provided for burn preparation.' });
+  }
+
+  const sanitizedTitle = (playlistName || 'momocider_mixtape').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const tempDir = path.join(process.cwd(), 'temp', `burn_${sanitizedTitle}_${Date.now()}`);
+
+  try {
+    await fs.promises.mkdir(tempDir, { recursive: true });
+    const preparedTracks = [];
+
+    for (let i = 0; i < tracks.length; i++) {
+      const track = tracks[i];
+      const targetUrl = track.url || track.originalUrl;
+      if (!targetUrl) continue;
+
+      const trackNum = (i + 1).toString().padStart(2, '0');
+      const outputTemplate = path.join(tempDir, `${trackNum} - %(title)s.%(ext)s`);
+      console.log(`⬇️ [${i + 1}/${tracks.length}] Preparing burn MP3: ${targetUrl}`);
+
+      await ytdlp(targetUrl, {
+        ...ytDlpBaseOptions,
+        extractAudio: true,
+        audioFormat: 'mp3',
+        audioQuality: 0,
+        output: outputTemplate,
+      });
+
+      const files = await fs.promises.readdir(tempDir);
+      const mp3File = files
+        .filter(file => file.toLowerCase().endsWith('.mp3'))
+        .sort()
+        .slice(-1)[0];
+
+      if (mp3File) {
+        preparedTracks.push({
+          id: track.id || `${Date.now()}-${i}`,
+          title: track.title || `Track ${i + 1}`,
+          path: path.join(tempDir, mp3File),
+        });
+      }
+    }
+
+    if (preparedTracks.length === 0) {
+      return res.status(500).json({
+        error: 'No MP3 files were produced from the selected tracks. The conversion step failed.',
+      });
+    }
+
+    return res.json({ success: true, tracks: preparedTracks });
+  } catch (error) {
+    const details = error?.stderr || error?.stdout || error?.message || String(error);
+    console.error('❌ Burn preparation failed:', details);
+    return res.status(500).json({
+      error: 'Failed to prepare MP3 tracks for burning.',
+      details,
+    });
+  }
+});
+
 app.post('/api/export-zip', async (req, res) => {
   const { tracks, playlistName } = req.body;
   console.log(`📦 Export request received for "${playlistName}" (${tracks?.length} tracks)`);
@@ -74,12 +143,11 @@ app.post('/api/export-zip', async (req, res) => {
       console.log(`⬇️ [${i + 1}/${tracks.length}] Downloading: ${targetUrl}`);
 
       await ytdlp(targetUrl, {
+        ...ytDlpBaseOptions,
         extractAudio: true,
         audioFormat: 'mp3',
         audioQuality: 0,
         output: outputTemplate,
-        noWarnings: true,
-        ffmpegLocation: ffmpegPath,
       });
     }
 
@@ -120,7 +188,7 @@ app.post('/api/export-zip', async (req, res) => {
 // --- 💿 CD Burn Endpoint ---
 app.post('/api/burn-cd', async (req, res) => {
     const { playlistName, tracks } = req.body;
-    
+
     if (!tracks || tracks.length === 0) {
         return res.status(400).json({ success: false, error: 'No tracks provided to burn.' });
     }
@@ -128,15 +196,10 @@ app.post('/api/burn-cd', async (req, res) => {
     console.log(`💿 CD Burn request received for "${playlistName}" (${tracks.length} tracks)`);
 
     try {
-        const hasHardwareBurner = false; 
-
-        if (!hasHardwareBurner) {
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            return res.json({ 
-                success: true, 
-                message: 'Simulation: Audio CD image prepared successfully! (Connect a physical CD-R drive to burn directly).' 
-            });
-        }
+        return res.status(501).json({
+            success: false,
+            error: 'Real disc burning is handled by the Windows Tauri IMAPI layer, not the Node backend. The backend only handles track metadata and zip export.'
+        });
     } catch (err) {
         console.error('❌ Burn process failed:', err);
         return res.status(500).json({ success: false, error: err.message || 'Failed to burn CD.' });

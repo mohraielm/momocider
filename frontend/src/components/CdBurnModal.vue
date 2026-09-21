@@ -1,23 +1,77 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { usePlaylistStore } from '../stores/playlist';
+import { getBurners, type BurnerInfo } from '../utils/tauri-ipc';
 
 const store = usePlaylistStore();
 const isOpen = ref(false);
 const isBurning = ref(false);
+const burners = ref<BurnerInfo[]>([]);
+const selectedBurnerId = ref('');
+const statusMessage = ref('');
+
+onMounted(async () => {
+    // Load available burners when modal is opened
+    if (isOpen.value) {
+        await loadBurners();
+    }
+});
+
+async function loadBurners() {
+    try {
+        burners.value = await getBurners();
+        if (burners.value.length > 0) {
+            selectedBurnerId.value = burners.value[0].id;
+            statusMessage.value = '';
+        } else {
+            selectedBurnerId.value = '';
+            statusMessage.value = '❌ No optical drive detected. Please connect a CD/DVD writer and make sure it appears in Windows Device Manager.';
+        }
+    } catch (error: any) {
+        selectedBurnerId.value = '';
+        statusMessage.value = `❌ No optical drive detected. Please connect a CD/DVD writer and make sure it appears in Windows Device Manager. (${error})`;
+    }
+}
 
 async function startBurn() {
+    if (!selectedBurnerId.value) {
+        statusMessage.value = '❌ Please select a burner first.';
+        return;
+    }
+
+    if (store.tracks.length === 0) {
+        statusMessage.value = '❌ Add at least one song before burning a CD.';
+        return;
+    }
+
     isBurning.value = true;
-    await store.burnCdToDrive();
-    isBurning.value = false;
-    isOpen.value = false;
+    statusMessage.value = '🔥 Burning CD...';
+
+    try {
+        await store.burnCdToDrive(selectedBurnerId.value);
+        statusMessage.value = '✅ CD burned successfully!';
+        setTimeout(() => {
+            isOpen.value = false;
+            statusMessage.value = '';
+        }, 2000);
+    } catch (error: any) {
+        statusMessage.value = `❌ Burn failed: ${error}`;
+    } finally {
+        isBurning.value = false;
+    }
+}
+
+function handleModalOpen() {
+    isOpen.value = true;
+    statusMessage.value = '';
+    loadBurners();
 }
 </script>
 
 <template>
     <div>
         <!-- Trigger Button -->
-        <button class="export-btn burn-modal-trigger" @click="isOpen = true" title="Open CD Burner">
+        <button class="export-btn burn-modal-trigger" @click="handleModalOpen" title="Open CD Burner">
             🔥 Burn CD...
         </button>
 
@@ -33,9 +87,33 @@ async function startBurn() {
                     <p class="disc-warning">⚠️ Please ensure a blank CD-R is inserted into your disc drive before starting.</p>
                 </div>
 
+                <!-- Burner Selection -->
+                <div v-if="burners.length > 0" class="burner-selector">
+                    <label for="burner-select">Select CD Burner:</label>
+                    <select 
+                        id="burner-select"
+                        v-model="selectedBurnerId" 
+                        class="peach-input burner-select"
+                        :disabled="isBurning"
+                    >
+                        <option 
+                            v-for="burner in burners" 
+                            :key="burner.id" 
+                            :value="burner.id"
+                        >
+                            {{ burner.name }}
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Status Message -->
+                <div v-if="statusMessage" class="status-message" :class="{ error: statusMessage.includes('❌') }">
+                    {{ statusMessage }}
+                </div>
+
                 <div class="modal-actions">
                     <button class="peach-button cancel-btn" @click="isOpen = false" :disabled="isBurning">Cancel</button>
-                    <button class="peach-button burn-btn" @click="startBurn" :disabled="isBurning">
+                    <button class="peach-button burn-btn" @click="startBurn" :disabled="isBurning || selectedBurnerId === ''" :title="selectedBurnerId ? 'Start burning' : 'Select a burner first'">
                         {{ isBurning ? '🔥 Burning Disc...' : '🚀 Start Burning' }}
                     </button>
                 </div>
@@ -64,7 +142,7 @@ async function startBurn() {
     border-radius: 14px;
     padding: 2rem;
     width: 90%;
-    max-width: 420px;
+    max-width: 500px;
     box-shadow: 6px 6px 0px #1a211c;
     color: #e5ece6;
     font-family: 'Courier New', Courier, monospace;
@@ -85,6 +163,40 @@ async function startBurn() {
     color: #ffbbbb;
     font-size: 0.8rem;
     margin-top: 0.8rem;
+    margin-bottom: 0;
+}
+.burner-selector {
+    margin: 1rem 0;
+}
+.burner-selector label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #c9d3cc;
+}
+.burner-select {
+    width: 100%;
+    padding: 0.6rem;
+    background: #323b34;
+    color: #e5ece6;
+    border: 2px solid #526355;
+    border-radius: 6px;
+    font-family: 'Courier New', Courier, monospace;
+}
+.burner-select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.status-message {
+    padding: 0.8rem;
+    margin: 1rem 0;
+    border-radius: 6px;
+    background: #323b34;
+    border-left: 4px solid #76d776;
+    font-size: 0.9rem;
+}
+.status-message.error {
+    border-left-color: #ff6b6b;
 }
 .modal-actions {
     display: flex;
@@ -97,5 +209,9 @@ async function startBurn() {
 }
 .burn-btn {
     background: #b86b5b;
+}
+.burn-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 </style>

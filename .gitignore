@@ -6,3 +6,6 @@ dist/
 temp/
 *.log
 .env
+target/
+*.exe
+.cargo/

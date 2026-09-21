@@ -1,0 +1,36 @@
+[package]
+name = "momocider"
+version = "0.1.0"
+description = "Momocider - CD Burning Station"
+authors = ["mohra"]
+edition = "2021"
+
+[lib]
+name = "momocider_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "momocider"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = ["codegen"] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-fs = "2"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+thiserror = "1.0"
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true
+opt-level = "z"
+
+[profile.dev]
+opt-level = 1

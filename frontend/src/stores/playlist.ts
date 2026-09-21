@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { burnCd, type Track as TauriTrack } from '../utils/tauri-ipc';
 
 export interface Track {
     id: string;
@@ -7,6 +8,7 @@ export interface Track {
     durationSeconds: number;
     thumbnailUrl: string;
     url: string;
+    localPath?: string;
 }
 
 export const usePlaylistStore = defineStore('playlist', {
@@ -167,29 +169,61 @@ export const usePlaylistStore = defineStore('playlist', {
             link.download = `${this.playlistName.toLowerCase().replace(/\s+/g, '-')}.json`;
             link.click();
         },
-        async burnCdToDrive() {
-            if (this.tracks.length === 0) return;
+        async burnCdToDrive(burnerId: string) {
+            if (this.tracks.length === 0) {
+                throw new Error('Add at least one song before burning a CD.');
+            }
 
             this.isLoadingTrack = true;
             this.errorMessage = '';
 
             try {
-                const response = await fetch('http://localhost:5000/api/burn-cd', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        playlistName: this.playlistName,
-                        tracks: this.tracks
-                    })
-                });
+                const tracksNeedingPrep = this.tracks.filter(t => !t.localPath || !t.localPath.trim());
+                if (tracksNeedingPrep.length > 0) {
+                    const response = await fetch('http://localhost:5000/api/prepare-burn', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            playlistName: this.playlistName,
+                            tracks: tracksNeedingPrep.map(t => ({
+                                id: t.id,
+                                title: t.title,
+                                url: t.url,
+                                originalUrl: t.url,
+                            }))
+                        })
+                    });
 
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Burn process failed');
+                    const data = await response.json();
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.error || 'Failed to prepare MP3 files for burning.');
+                    }
 
+                    const preparedMap = new Map<string, string>(
+                        data.tracks.map((track: { id: string; path: string }) => [track.id, track.path] as const)
+                    );
+                    this.tracks = this.tracks.map(t => ({
+                        ...t,
+                        localPath: preparedMap.get(t.id) || t.localPath || '',
+                    }));
+                }
+
+                const tauriTracks: TauriTrack[] = this.tracks.map(t => ({
+                    path: (t.localPath || '').trim() || t.url,
+                    title: t.title,
+                }));
+
+                const invalidRemoteTrack = tauriTracks.find(t => /^https?:\/\//i.test(t.path));
+                if (invalidRemoteTrack) {
+                    throw new Error('Real CD burning requires local MP3 files. The burn prep step could not produce them.');
+                }
+
+                const result = await burnCd(burnerId, tauriTracks, this.playlistName);
+                console.log('Burn result:', result);
                 alert('💿 Success! Your audio CD has been burned.');
             } catch (err: any) {
-                this.errorMessage = err.message || 'Failed to burn CD. Check local backend.';
-                alert(`❌ ${this.errorMessage}`);
+                this.errorMessage = err.message || 'Failed to burn CD. Make sure your burner is connected.';
+                throw err;
             } finally {
                 this.isLoadingTrack = false;
             }
