@@ -180,7 +180,7 @@ export const usePlaylistStore = defineStore('playlist', {
             try {
                 const tracksNeedingPrep = this.tracks.filter(t => {
                     const localPath = t.localPath?.trim() || '';
-                    return !localPath || !/\.wav$/i.test(localPath);
+                    return !localPath || !/\.mp3$/i.test(localPath);
                 });
                 if (tracksNeedingPrep.length > 0) {
                     const response = await fetch('http://localhost:5000/api/prepare-burn', {
@@ -199,7 +199,7 @@ export const usePlaylistStore = defineStore('playlist', {
 
                     const data = await response.json();
                     if (!response.ok || !data.success) {
-                        throw new Error(data.error || 'Failed to prepare audio files for burning.');
+                        throw new Error(data.error || 'Failed to prepare MP3 files for burning.');
                     }
 
                     const preparedMap = new Map<string, string>(
@@ -218,7 +218,7 @@ export const usePlaylistStore = defineStore('playlist', {
 
                 const invalidRemoteTrack = tauriTracks.find(t => /^https?:\/\//i.test(t.path));
                 if (invalidRemoteTrack) {
-                    throw new Error('Audio CD burning requires local WAV files. The burn prep step could not produce them.');
+                    throw new Error('MP3 data-disc burning requires local MP3 files. The burn prep step could not produce them.');
                 }
 
                 const result = await burnCd(burnerId, tauriTracks, this.playlistName);

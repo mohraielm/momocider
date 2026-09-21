@@ -52,7 +52,7 @@ app.post('/api/track/info', async (req, res) => {
   }
 });
 
-// 💿 2. Audio-CD preparation and ZIP packaging endpoints
+// 💿 2. MP3 data-disc preparation and ZIP packaging endpoints
 app.post('/api/prepare-burn', async (req, res) => {
   const { tracks, playlistName } = req.body;
   console.log(`💿 Burn prep request received for "${playlistName}" (${tracks?.length} tracks)`);
@@ -75,34 +75,34 @@ app.post('/api/prepare-burn', async (req, res) => {
 
       const trackNum = (i + 1).toString().padStart(2, '0');
       const outputTemplate = path.join(tempDir, `${trackNum} - %(title)s.%(ext)s`);
-      console.log(`⬇️ [${i + 1}/${tracks.length}] Preparing CD audio WAV: ${targetUrl}`);
+      console.log(`⬇️ [${i + 1}/${tracks.length}] Preparing MP3 for data CD: ${targetUrl}`);
 
       await ytdlp(targetUrl, {
         ...ytDlpBaseOptions,
         extractAudio: true,
-        audioFormat: 'wav',
+        audioFormat: 'mp3',
         audioQuality: 0,
         output: outputTemplate,
       });
 
       const files = await fs.promises.readdir(tempDir);
-      const wavFile = files
-        .filter(file => file.toLowerCase().endsWith('.wav'))
+      const mp3File = files
+        .filter(file => file.toLowerCase().endsWith('.mp3'))
         .sort()
         .slice(-1)[0];
 
-      if (wavFile) {
+      if (mp3File) {
         preparedTracks.push({
           id: track.id || `${Date.now()}-${i}`,
           title: track.title || `Track ${i + 1}`,
-          path: path.join(tempDir, wavFile),
+          path: path.join(tempDir, mp3File),
         });
       }
     }
 
     if (preparedTracks.length === 0) {
       return res.status(500).json({
-        error: 'No WAV audio files were produced from the selected tracks. The conversion step failed.',
+        error: 'No MP3 files were produced from the selected tracks. The conversion step failed.',
       });
     }
 
@@ -111,7 +111,7 @@ app.post('/api/prepare-burn', async (req, res) => {
     const details = error?.stderr || error?.stdout || error?.message || String(error);
     console.error('❌ Burn preparation failed:', details);
     return res.status(500).json({
-      error: 'Failed to prepare WAV audio tracks for burning.',
+      error: 'Failed to prepare MP3 tracks for burning.',
       details,
     });
   }

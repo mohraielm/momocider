@@ -271,8 +271,12 @@ if (-not $drive) {{ \
     $drive = Get-CimInstance -Class Win32_CDROMDrive | Select-Object -First 1; \
     if (-not $drive) {{ throw \"No optical drive detected for burn.\" }}; \
 }}; \
-$files = @(Get-ChildItem -LiteralPath $sourceDir -Filter '*.wav' | Sort-Object Name); \
-if ($files.Count -eq 0) {{ throw \"No WAV audio tracks were prepared for the audio CD.\" }}; \
+$fs = New-Object -ComObject IMAPI2FS.MsftFileSystemImage; \
+$fs.VolumeName = $volumeName; \
+$fs.ChooseImageDefaultsForMediaType($mediaType); \
+$root = $fs.Root; \
+$root.AddTree($sourceDir, $true); \
+$img = $fs.CreateResultImage(); \
             $recorderPath = if ($drive.Drive) {{ $drive.Drive.TrimEnd('\\') }} else {{ $drive.DeviceID }}; \
             $discMaster = New-Object -ComObject IMAPI2.MsftDiscMaster2; \
             $recorderCandidates = @(); \
@@ -297,20 +301,11 @@ if ($files.Count -eq 0) {{ throw \"No WAV audio tracks were prepared for the aud
             if (-not $initialized) {{ \
                 throw \"IMAPI could not initialize the optical recorder. Tried the Windows device, PNP, and drive identifiers for $recorderPath.\"; \
             }}; \
-$format = New-Object -ComObject IMAPI2.MsftDiscFormat2TrackAtOnce; \
+$format = New-Object -ComObject IMAPI2.MsftDiscFormat2Data; \
 $format.Recorder = $recorder; \
 $format.ClientName = 'Momocider'; \
-$format.PrepareMedia(); \
-foreach ($file in $files) {{ \
-    $stream = New-Object -ComObject ADODB.Stream; \
-    $stream.Type = 1; \
-    $stream.Open(); \
-    $stream.LoadFromFile($file.FullName); \
-    $format.AddAudioTrack($stream); \
-    $stream.Close(); \
-}}; \
-$format.Finish(); \
-Write-Output \"Successfully burned audio CD '$volumeName' to $recorderPath\"",
+$format.Write($img.ImageStream); \
+Write-Output \"Successfully burned MP3 data CD '$volumeName' to $recorderPath\"",
         burner_id, source_dir, volume_name
     )
 }
@@ -420,13 +415,11 @@ mod tests {
 
         assert!(script.contains("CDROM0"));
         assert!(script.contains("momocider-test"));
-        assert!(script.contains("IMAPI2.MsftDiscFormat2TrackAtOnce"));
+        assert!(script.contains("IMAPI2.MsftDiscFormat2Data"));
         assert!(script.contains("$mediaType = 2"));
-        assert!(script.contains("Filter '*.wav'"));
         assert!(script.contains("MsftDiscRecorder2"));
-        assert!(script.contains("PrepareMedia()"));
-        assert!(script.contains("AddAudioTrack($stream)"));
-        assert!(script.contains("Finish()"));
+        assert!(script.contains("AddTree($sourceDir, $true)"));
+        assert!(script.contains("Write($img.ImageStream)"));
     }
 
     #[test]
