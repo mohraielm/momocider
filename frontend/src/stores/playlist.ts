@@ -178,7 +178,10 @@ export const usePlaylistStore = defineStore('playlist', {
             this.errorMessage = '';
 
             try {
-                const tracksNeedingPrep = this.tracks.filter(t => !t.localPath || !t.localPath.trim());
+                const tracksNeedingPrep = this.tracks.filter(t => {
+                    const localPath = t.localPath?.trim() || '';
+                    return !localPath || !/\.wav$/i.test(localPath);
+                });
                 if (tracksNeedingPrep.length > 0) {
                     const response = await fetch('http://localhost:5000/api/prepare-burn', {
                         method: 'POST',
