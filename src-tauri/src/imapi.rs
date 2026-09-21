@@ -306,7 +306,7 @@ foreach ($file in $files) {{ \
     $streamPtr = [IntPtr]::Zero; \
     $hr = [MomociderNativeStreams]::SHCreateStreamOnFileEx($file.FullName, 0x20, 0, $false, [IntPtr]::Zero, [ref]$streamPtr); \
     if ($hr -ne 0) {{ throw \"Could not open WAV audio stream for $($file.FullName) (HRESULT $hr).\" }}; \
-    $stream = [Runtime.InteropServices.Marshal]::GetObjectForIUnknown($streamPtr); \
+    $stream = [Runtime.InteropServices.Marshal]::GetTypedObjectForIUnknown($streamPtr, [Runtime.InteropServices.ComTypes.IStream]); \
     $format.AddAudioTrack($stream); \
     [Runtime.InteropServices.Marshal]::Release($streamPtr) | Out-Null; \
 }}; \
