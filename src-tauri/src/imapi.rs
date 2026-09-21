@@ -273,7 +273,7 @@ if (-not $drive) {{ \
 }}; \
 $files = @(Get-ChildItem -LiteralPath $sourceDir -Filter '*.wav' | Sort-Object Name); \
 if ($files.Count -eq 0) {{ throw \"No PCM WAV audio tracks were prepared.\" }}; \
-            $recorderPath = if ($drive.Drive) {{ $drive.Drive.TrimEnd('\\') }} else {{ $drive.DeviceID }}; \
+            $recorderPath = if ($drive.Drive) {{ $drive.Drive }} else {{ $drive.DeviceID }}; \
             $discMaster = New-Object -ComObject IMAPI2.MsftDiscMaster2; \
             $recorderCandidates = @(); \
             try {{ \
@@ -281,7 +281,7 @@ if ($files.Count -eq 0) {{ throw \"No PCM WAV audio tracks were prepared.\" }}; 
                     $recorderCandidates += $discMaster.Item($index); \
                 }}; \
             }} catch {{ }}; \
-            $recorderCandidates += @($driveId, $drive.DeviceID, $drive.PNPDeviceID, $recorderPath); \
+            $recorderCandidates += @($driveId, $drive.DeviceID, $drive.PNPDeviceID); \
             $recorderCandidates = $recorderCandidates | \
                 Where-Object {{ $_ -and $_.ToString().Trim() }} | \
                 Select-Object -Unique; \
@@ -307,7 +307,7 @@ foreach ($file in $files) {{ \
     $stream.Open(); \
     $stream.LoadFromFile($file.FullName); \
     $stream.Position = 0; \
-    $format.AddAudioTrack($stream, $true); \
+    $format.AddAudioTrack($stream); \
     $stream.Close(); \
 }}; \
 $format.Finish(); \
@@ -426,7 +426,7 @@ mod tests {
         assert!(script.contains("Filter '*.wav'"));
         assert!(script.contains("MsftDiscRecorder2"));
         assert!(script.contains("PrepareMedia()"));
-        assert!(script.contains("AddAudioTrack($stream, $true)"));
+        assert!(script.contains("AddAudioTrack($stream)"));
         assert!(script.contains("Finish()"));
     }
 
