@@ -306,7 +306,8 @@ foreach ($file in $files) {{ \
     $stream.Type = 1; \
     $stream.Open(); \
     $stream.LoadFromFile($file.FullName); \
-    $format.AddAudioTrack($stream); \
+    $stream.Position = 0; \
+    $format.AddAudioTrack($stream, $true); \
     $stream.Close(); \
 }}; \
 $format.Finish(); \
@@ -425,7 +426,7 @@ mod tests {
         assert!(script.contains("Filter '*.wav'"));
         assert!(script.contains("MsftDiscRecorder2"));
         assert!(script.contains("PrepareMedia()"));
-        assert!(script.contains("AddAudioTrack($stream)"));
+        assert!(script.contains("AddAudioTrack($stream, $true)"));
         assert!(script.contains("Finish()"));
     }
 
