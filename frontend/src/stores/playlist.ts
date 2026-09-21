@@ -199,7 +199,8 @@ export const usePlaylistStore = defineStore('playlist', {
 
                     const data = await response.json();
                     if (!response.ok || !data.success) {
-                        throw new Error(data.error || 'Failed to prepare audio files for burning.');
+                        const details = data.details ? ` ${data.details}` : '';
+                        throw new Error(`${data.error || 'Failed to prepare audio files for burning.'}${details}`);
                     }
 
                     const preparedMap = new Map<string, string>(
