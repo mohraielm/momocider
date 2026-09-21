@@ -301,14 +301,7 @@ $format = New-Object -ComObject IMAPI2.MsftDiscFormat2TrackAtOnce; \
 $format.Recorder = $recorder; \
 $format.ClientName = 'Momocider'; \
 $format.PrepareMedia(); \
-Add-Type @' \
-using System; \
-using System.Runtime.InteropServices; \
-public static class MomociderNativeStreams {{ \
-    [DllImport(\"shlwapi.dll\", CharSet = CharSet.Unicode)] \
-    public static extern int SHCreateStreamOnFileEx(string path, uint mode, uint attributes, bool create, IntPtr template, out IntPtr stream); \
-}} \
-'@; \
+Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class MomociderNativeStreams {{ [DllImport(\"shlwapi.dll\", CharSet = CharSet.Unicode)] public static extern int SHCreateStreamOnFileEx(string path, uint mode, uint attributes, bool create, IntPtr template, out IntPtr stream); }}'; \
 foreach ($file in $files) {{ \
     $streamPtr = [IntPtr]::Zero; \
     $hr = [MomociderNativeStreams]::SHCreateStreamOnFileEx($file.FullName, 0x20, 0, $false, [IntPtr]::Zero, [ref]$streamPtr); \
