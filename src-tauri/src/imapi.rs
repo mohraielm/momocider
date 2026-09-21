@@ -300,6 +300,7 @@ if ($files.Count -eq 0) {{ throw \"No WAV audio tracks were prepared for the aud
 $format = New-Object -ComObject IMAPI2.MsftDiscFormat2TrackAtOnce; \
 $format.Recorder = $recorder; \
 $format.ClientName = 'Momocider'; \
+$format.PrepareMedia(); \
 foreach ($file in $files) {{ \
     $stream = New-Object -ComObject ADODB.Stream; \
     $stream.Type = 1; \
@@ -423,6 +424,7 @@ mod tests {
         assert!(script.contains("$mediaType = 2"));
         assert!(script.contains("Filter '*.wav'"));
         assert!(script.contains("MsftDiscRecorder2"));
+        assert!(script.contains("PrepareMedia()"));
         assert!(script.contains("AddAudioTrack($stream)"));
         assert!(script.contains("Finish()"));
     }
