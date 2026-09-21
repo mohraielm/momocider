@@ -4,11 +4,12 @@ import ytdlp from 'yt-dlp-exec';
 import ffmpegPath from 'ffmpeg-static';
 import path from 'path';
 import fs from 'fs';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import archiver from 'archiver';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const app = express();
 const PORT = process.env.PORT || 5000;
 const ytDlpBaseOptions = {
@@ -52,7 +53,7 @@ app.post('/api/track/info', async (req, res) => {
   }
 });
 
-// 💿 2. MP3 data-disc preparation and ZIP packaging endpoints
+// 💿 2. Audio-CD preparation and ZIP packaging endpoints
 app.post('/api/prepare-burn', async (req, res) => {
   const { tracks, playlistName } = req.body;
   console.log(`💿 Burn prep request received for "${playlistName}" (${tracks?.length} tracks)`);
@@ -75,7 +76,7 @@ app.post('/api/prepare-burn', async (req, res) => {
 
       const trackNum = (i + 1).toString().padStart(2, '0');
       const outputTemplate = path.join(tempDir, `${trackNum} - %(title)s.%(ext)s`);
-      console.log(`⬇️ [${i + 1}/${tracks.length}] Preparing MP3 for data CD: ${targetUrl}`);
+      console.log(`⬇️ [${i + 1}/${tracks.length}] Preparing PCM WAV for audio CD: ${targetUrl}`);
 
       await ytdlp(targetUrl, {
         ...ytDlpBaseOptions,
@@ -92,17 +93,27 @@ app.post('/api/prepare-burn', async (req, res) => {
         .slice(-1)[0];
 
       if (mp3File) {
+        const mp3Path = path.join(tempDir, mp3File);
+        const wavPath = path.join(tempDir, `${trackNum}.wav`);
+        await execFileAsync(ffmpegPath, [
+          '-y',
+          '-i', mp3Path,
+          '-ar', '44100',
+          '-ac', '2',
+          '-sample_fmt', 's16',
+          wavPath,
+        ]);
         preparedTracks.push({
           id: track.id || `${Date.now()}-${i}`,
           title: track.title || `Track ${i + 1}`,
-          path: path.join(tempDir, mp3File),
+          path: wavPath,
         });
       }
     }
 
     if (preparedTracks.length === 0) {
       return res.status(500).json({
-        error: 'No MP3 files were produced from the selected tracks. The conversion step failed.',
+        error: 'No PCM WAV files were produced from the selected tracks. The conversion step failed.',
       });
     }
 
@@ -111,7 +122,7 @@ app.post('/api/prepare-burn', async (req, res) => {
     const details = error?.stderr || error?.stdout || error?.message || String(error);
     console.error('❌ Burn preparation failed:', details);
     return res.status(500).json({
-      error: 'Failed to prepare MP3 tracks for burning.',
+      error: 'Failed to prepare PCM WAV tracks for burning.',
       details,
     });
   }
