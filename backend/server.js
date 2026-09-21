@@ -98,9 +98,12 @@ app.post('/api/prepare-burn', async (req, res) => {
         await execFileAsync(ffmpegPath, [
           '-y',
           '-i', mp3Path,
+          '-map_metadata', '-1',
           '-ar', '44100',
           '-ac', '2',
+          '-acodec', 'pcm_s16le',
           '-sample_fmt', 's16',
+          '-f', 'wav',
           wavPath,
         ]);
         preparedTracks.push({
