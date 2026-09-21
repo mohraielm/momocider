@@ -207,10 +207,16 @@ fn prepare_track_directory(tracks: &[Track], playlist_name: &str) -> Result<Path
 
     for (index, track) in tracks.iter().enumerate() {
         let source = validate_local_track_source(&track.path, &track.title)?;
+        let extension = source
+            .extension()
+            .and_then(|value| value.to_str())
+            .filter(|value| !value.is_empty())
+            .unwrap_or("wav");
         let target_path = work_dir.join(format!(
-            "{:02}_{}.mp3",
+            "{:02}_{}.{}",
             index + 1,
-            sanitize_track_title(&track.title)
+            sanitize_track_title(&track.title),
+            extension
         ));
 
         fs::copy(&source, &target_path).map_err(|err| {
